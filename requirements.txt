@@ -1,0 +1,19 @@
+# Core (Colab already has torch, torchvision, numpy, pandas, scikit-learn, matplotlib, pillow)
+torch>=2.1
+torchvision>=0.16
+timm>=0.9.12
+numpy
+pandas
+scikit-learn
+matplotlib
+pillow
+openpyxl
+
+# Data download + demo
+kagglehub
+huggingface_hub
+gradio>=4.0
+
+# Optional: EN->BN machine translation for the knowledge base (python -m src.knowledge_base build --translate)
+# transformers>=4.40
+# sentencepiece

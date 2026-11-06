@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data — never commit the Kaggle dataset (license + size). Download it instead.
+data/raw/
+data/external/
+*.zip
+kaggle.json
+
+# Training outputs / model weights (too big for git; use Drive, GitHub Releases or HF Hub)
+runs/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+wandb/
+flagged/
+.gradio/
+
+# Generated KB (rebuild with src.knowledge_base build) — remove this line if you want to commit it
+data/kb_extra.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env
