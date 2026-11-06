@@ -1,6 +1,6 @@
 """Evaluate a trained checkpoint on the Testing split.
 
-    python -m src.evaluate --data_root /content/data --run_dir /content/drive/MyDrive/rx_runs/effb0
+    python -m src.evaluate --data_root DATA --run_dir RUN
 
 Writes to run_dir: test_metrics.json, classification_report.csv,
 confusion_matrix.png, misclassified.csv
@@ -20,7 +20,7 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from torch.utils.data import DataLoader
 
-from .data import LabelMap, PrescriptionWords, build_transforms, load_all
+from .data import LabelMap, PrescriptionWords, load_all, transforms_from_cfg
 from .model import load_checkpoint
 
 
@@ -49,7 +49,7 @@ def main(argv=None):
     model, cfg = load_checkpoint(run / args.ckpt, len(label_map.classes), str(device))
 
     df = load_all(args.data_root)[args.split]
-    ds = PrescriptionWords(df, label_map, build_transforms(cfg["img_size"], train=False))
+    ds = PrescriptionWords(df, label_map, transforms_from_cfg(cfg))
     probs, y = predict_all(model, DataLoader(ds, args.batch_size, num_workers=2), device)
     pred = probs.argmax(1)
     top5 = np.argsort(-probs, axis=1)[:, :5]

@@ -1,18 +1,9 @@
 """Medicine knowledge base: generic name -> Bangla description.
 
-Two sources, in priority order:
-  1. data/bangla_generic_info.json   (hand-written Bangla entries, shipped in the repo)
-  2. data/kb_extra.json              (optional, built from a larger Bangladesh medicine
-                                      dataset by `python -m src.knowledge_base build ...`)
-
-CLI
----
-Check which generics in your dataset are not yet covered by the Bangla KB:
+Check coverage:
     python -m src.knowledge_base check --label_map runs/exp1/label_map.json
-
 Build kb_extra.json from the "Medicine Dataset of Bangladesh" (generic.csv):
-    python -m src.knowledge_base build --generic_csv data/external/generic.csv \
-        --label_map runs/exp1/label_map.json [--translate]
+    python -m src.knowledge_base build --generic_csv generic.csv --label_map runs/exp1/label_map.json [--translate]
 """
 from __future__ import annotations
 
@@ -56,6 +47,9 @@ class KnowledgeBase:
             k = norm(part)
             if k and k in self.alias:
                 return self.entries[self.alias[k]]
+        base = norm(re.sub(r"\(.*?\)", "", generic))  # "Ketoconazole (Cream)" -> "ketoconazole"
+        if base in self.alias:
+            return self.entries[self.alias[base]]
         close = difflib.get_close_matches(key, list(self.alias), n=1, cutoff=0.85)
         return self.entries[self.alias[close[0]]] if close else None
 

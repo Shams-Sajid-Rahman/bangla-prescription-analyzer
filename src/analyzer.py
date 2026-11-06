@@ -10,7 +10,7 @@ from pathlib import Path
 
 import torch
 
-from .data import LabelMap, build_transforms, load_image
+from .data import LabelMap, load_image, transforms_from_cfg
 from .knowledge_base import KnowledgeBase
 from .model import load_checkpoint
 
@@ -28,7 +28,7 @@ class PrescriptionAnalyzer:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.labels = LabelMap.load(run / "label_map.json")
         self.model, cfg = load_checkpoint(run / ckpt, len(self.labels.classes), self.device)
-        self.tf = build_transforms(cfg["img_size"], train=False)
+        self.tf = transforms_from_cfg(cfg)
         self.kb = KnowledgeBase()
         self.low_conf = low_conf
 
@@ -49,7 +49,6 @@ class PrescriptionAnalyzer:
             "prediction": best,
             "alternatives": preds[1:],
             "low_confidence": best["confidence"] < self.low_conf,
-            # top-k alternatives that share the same generic make the generic answer safer
             "generic_agreement": sum(p["generic"] == best["generic"] for p in preds) / len(preds),
             "info": info,
         }
