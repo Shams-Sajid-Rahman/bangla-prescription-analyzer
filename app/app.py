@@ -1,6 +1,8 @@
 """Gradio web demo.
 
 Colab:   !python app/app.py --run_dir /content/drive/MyDrive/rx_runs/effb0 --share
+Ensemble (2+ models are averaged):
+         !python app/app.py --run_dir .../FINAL_convnext_s42 .../FINAL_convnext_s7 --share
 Local:   python app/app.py --run_dir runs/effb0
 """
 import argparse
@@ -39,7 +41,8 @@ def build_ui(analyzer: PrescriptionAnalyzer):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run_dir", required=True)
-    ap.add_argument("--share", action="store_true", help="Public link (needed in Colab)")
+    ap.add_argument("--run_dir", required=True, nargs="+", help="one run folder, or several to ensemble")
+    ap.add_argument("--share", action="store_true", help="Public link (needed in Colab / Kaggle)")
+    ap.add_argument("--no_tta", action="store_true", help="faster, slightly less accurate")
     a = ap.parse_args()
-    build_ui(PrescriptionAnalyzer(a.run_dir)).launch(share=a.share)
+    build_ui(PrescriptionAnalyzer(a.run_dir, tta=not a.no_tta)).launch(share=a.share)
