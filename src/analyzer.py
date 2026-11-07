@@ -1,6 +1,7 @@
 """Inference: handwritten medicine-word image -> medicine name + Bangla description.
 
     python -m src.analyzer --run_dir runs/exp1 --image path/to/word.png
+    python -m src.analyzer --run_dir runs/s42 runs/s7 --image path/to/word.png   # 2-model ensemble
 """
 from __future__ import annotations
 
@@ -21,21 +22,48 @@ DISCLAIMER_BN = (
 )
 
 
+# Test-time augmentation used in the final test: small horizontal / vertical shifts.
+TTA_SHIFTS = (0, -6, 6)
+
+
 class PrescriptionAnalyzer:
-    def __init__(self, run_dir: str | Path, ckpt: str = "best.pt", device: str | None = None,
-                 low_conf: float = 0.60):
-        run = Path(run_dir)
+    """Loads one or more trained runs. With several runs the probabilities are averaged (ensemble)."""
+
+    def __init__(self, run_dir, ckpt: str = "best.pt", device: str | None = None,
+                 low_conf: float = 0.60, tta: bool = True):
+        runs = [Path(run_dir)] if isinstance(run_dir, (str, Path)) else [Path(r) for r in run_dir]
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.labels = LabelMap.load(run / "label_map.json")
-        self.model, cfg = load_checkpoint(run / ckpt, len(self.labels.classes), self.device)
-        self.tf = transforms_from_cfg(cfg)
+        self.labels = LabelMap.load(runs[0] / "label_map.json")
+        self.models, self.tfs = [], []
+        for run in runs:
+            lm = LabelMap.load(run / "label_map.json")
+            if lm.classes != self.labels.classes:
+                raise ValueError(f"{run} has a different class list than {runs[0]}; cannot ensemble.")
+            model, cfg = load_checkpoint(run / ckpt, len(lm.classes), self.device)
+            self.models.append(model)
+            self.tfs.append(transforms_from_cfg(cfg))
         self.kb = KnowledgeBase()
         self.low_conf = low_conf
+        self.tta = tta
+
+    def _model_probs(self, model, x: torch.Tensor) -> torch.Tensor:
+        if not self.tta:
+            return model(x).softmax(1)
+        p = 0
+        for s in TTA_SHIFTS:
+            for dims in ((3,), (2,)):
+                if s == 0 and dims == (2,):
+                    continue
+                p = p + model(torch.roll(x, s, dims=dims) if s else x).softmax(1)
+        return p / p.sum(1, keepdim=True)
 
     @torch.no_grad()
     def predict(self, image, top_k: int = 3) -> list[dict]:
-        x = self.tf(load_image(image)).unsqueeze(0).to(self.device)
-        probs = self.model(x).softmax(1)[0].cpu()
+        img = load_image(image)
+        probs = torch.stack([
+            self._model_probs(m, tf(img).unsqueeze(0).to(self.device))
+            for m, tf in zip(self.models, self.tfs)
+        ]).mean(0)[0].cpu()
         conf, idx = probs.topk(min(top_k, len(probs)))
         return [{"medicine": self.labels.classes[i],
                  "generic": self.labels.generic_of.get(self.labels.classes[i], ""),
@@ -84,12 +112,13 @@ class PrescriptionAnalyzer:
 
 def main(argv=None):
     p = argparse.ArgumentParser()
-    p.add_argument("--run_dir", required=True)
+    p.add_argument("--run_dir", required=True, nargs="+", help="one run folder, or several to ensemble")
     p.add_argument("--image", required=True, nargs="+")
+    p.add_argument("--no_tta", action="store_true", help="faster, slightly less accurate")
     p.add_argument("--ckpt", default="best.pt")
     p.add_argument("--json", action="store_true", help="Print raw JSON instead of the Bangla report")
     args = p.parse_args(argv)
-    an = PrescriptionAnalyzer(args.run_dir, args.ckpt)
+    an = PrescriptionAnalyzer(args.run_dir, args.ckpt, tta=not args.no_tta)
     for img in args.image:
         res = an.analyze(img)
         print(f"\n===== {img} =====")
