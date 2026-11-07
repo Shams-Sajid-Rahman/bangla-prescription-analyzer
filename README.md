@@ -7,7 +7,6 @@ handwritten word image ──► CNN classifier (78 medicines) ──► generic
       (Renova)             ConvNeXt-Small, 2-model ensemble     (Paracetamol)    data/bangla_generic_info.json     "ব্যবহার: জ্বর, ব্যথা…"
 ```
 
-![Demo screenshot](results/demo.png)
 
 > ⚠️ **Educational / research project only.** Model output can be wrong. The app never gives dosages. Always confirm with a doctor or pharmacist.
 
